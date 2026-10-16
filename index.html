@@ -1,0 +1,150 @@
+
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaomchiBot — Nima pishiramiz?</title>
+<style>
+:root{--green:#16845b;--bg:#f5f7f5;--text:#202820}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,sans-serif}
+header{background:linear-gradient(135deg,#116c49,#27a875);color:white;padding:30px 18px;text-align:center}
+header h1{font-size:34px;margin:0 0 10px}
+header p{margin:0;opacity:.92}
+main{max-width:1000px;margin:auto;padding:20px}
+.searchbox{display:flex;gap:8px;flex-wrap:wrap;margin:15px 0}
+input,button{font:inherit;border-radius:12px;padding:13px;border:1px solid #ddd}
+input{flex:1;min-width:180px;background:white}
+button{background:var(--green);color:white;border:0;cursor:pointer;font-weight:bold}
+button:hover{opacity:.88}
+.categories{display:flex;gap:8px;flex-wrap:wrap;margin:15px 0}
+.categories button{background:#e1eee7;color:#176444}
+.categories button.active{background:var(--green);color:white}
+#message{color:#4b5b50;margin:12px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:15px}
+.card{background:white;border-radius:17px;padding:18px;box-shadow:0 4px 15px #14251b0c}
+.emoji{font-size:38px}
+.card h3{margin:8px 0}
+.meta{font-size:13px;color:#69756c;margin:8px 0}
+.card p{line-height:1.5}
+.card button{width:100%;margin-top:8px}
+.secondary{background:#e1eee7;color:#176444}
+#recipe{display:none;background:white;border-radius:18px;padding:22px;margin:20px 0;box-shadow:0 4px 15px #14251b0c}
+#recipe li{margin:9px 0;line-height:1.5}
+footer{text-align:center;padding:25px;color:#718075}
+</style>
+</head>
+<body>
+<header>
+<h1>🍲 TaomchiBot</h1>
+<p>Uyda nima bor? Keling, mazali taom topamiz!</p>
+</header>
+<main>
+<h2>🔎 Taom qidirish</h2>
+<div class="searchbox">
+<input id="search" placeholder="Masalan: osh, somsa, makaron...">
+<button onclick="render()">Qidirish</button>
+</div>
+<h3>🥕 Menda bor mahsulotlar</h3>
+<div class="searchbox">
+<input id="ingredients" placeholder="Masalan: kartoshka, tuxum, piyoz">
+<button onclick="findByIngredients()">Taom top</button>
+</div>
+<button onclick="randomDish()">🎲 Tasodifiy taom</button>
+<div class="categories" id="categories"></div>
+<p id="message">Mazali taomlardan birini tanlang 😋</p>
+<section id="recipe"></section>
+<section class="grid" id="grid"></section>
+</main>
+<footer>© 2026 TaomchiBot · Har kuni yangi ta’m! ❤️</footer>
+<script>
+const dishes=[
+{name:"O‘zbek palovi",emoji:"🍛",cat:"Milliy",time:90,items:["guruch","sabzi","go‘sht","piyoz","yog‘"],desc:"An’anaviy, xushbo‘y o‘zbek palovi.",steps:["Guruchni yuvib, suvda iviting.","Go‘shtni bo‘laklab, yog‘da qovuring.","Piyoz va sabzi solib, qovurishda davom eting.","Suv va ziravorlar qo‘shib, go‘shtni pishiring.","Guruchni solib, suvini tortguncha pishiring."]},
+{name:"Qovurilgan tuxum",emoji:"🍳",cat:"Tezkor",time:10,items:["tuxum","yog‘","tuz"],desc:"Tez tayyor bo‘ladigan oddiy nonushta.",steps:["Tovani qizdirib, ozgina yog‘ soling.","Tuxumlarni chaqing.","Tuz sepib, tuxum oqi pishguncha qovuring."]},
+{name:"Kartoshka qovurmasi",emoji:"🥔",cat:"Tezkor",time:25,items:["kartoshka","yog‘","tuz","piyoz"],desc:"Qarsildoq kartoshka qovurmasi.",steps:["Kartoshkani tozalab, to‘g‘rang.","Qizigan yog‘da kartoshkani qovuring.","Xohishga ko‘ra piyoz qo‘shing.","Tuz sepib, pishguncha aralashtiring."]},
+{name:"Makaron",emoji:"🍝",cat:"Tezkor",time:20,items:["makaron","tuz","yog‘"],desc:"Oddiy va mazali makaron.",steps:["Suvni qaynatib, tuz soling.","Makaronni solib, qadoqdagi vaqt bo‘yicha pishiring.","Suvini to‘kib, ozgina yog‘ bilan aralashtiring."]},
+{name:"Sho‘rva",emoji:"🍜",cat:"Milliy",time:100,items:["go‘sht","kartoshka","sabzi","piyoz","pomidor"],desc:"To‘yimli uy sho‘rvasi.",steps:["Go‘shtni suvda qaynatib, ko‘pigini oling.","Piyoz, sabzi va pomidor qo‘shing.","Kartoshka va tuz soling.","Masalliqlar yumshaguncha past olovda pishiring."]},
+{name:"Mastava",emoji:"🥣",cat:"Milliy",time:60,items:["guruch","go‘sht","sabzi","piyoz","kartoshka","pomidor"],desc:"Guruchli, mazali o‘zbek suyuq taomi.",steps:["Go‘sht va piyozni qovuring.","Sabzi va pomidor qo‘shing.","Suv, kartoshka va guruch soling.","Guruch pishguncha qaynatib, ziravorlang."]},
+{name:"Chuchvara",emoji:"🥟",cat:"Milliy",time:75,items:["un","go‘sht","piyoz","tuz"],desc:"Go‘shtli an’anaviy chuchvara.",steps:["Un, suv va tuzdan xamir qoring.","Qiymalangan go‘shtni piyoz bilan aralashtiring.","Xamirni yoyib, kichik bo‘laklarga kesing.","Qiymani solib tuging.","Qaynagan suvda pishirib oling."]},
+{name:"Manti",emoji:"🥟",cat:"Milliy",time:80,items:["un","go‘sht","piyoz","tuz"],desc:"Bug‘da pishiriladigan mazali manti.",steps:["Xamir qoring va tindiring.","Go‘sht bilan piyozni mayda to‘g‘rab aralashtiring.","Xamirga qiymani solib tuging.","Mantiqozonda bug‘da pishiring."]},
+{name:"Dimlama",emoji:"🥘",cat:"Milliy",time:80,items:["go‘sht","kartoshka","sabzi","piyoz","pomidor","karam"],desc:"Sabzavot va go‘shtli dimlama.",steps:["Go‘sht va piyozni qozonga joylang.","Sabzi, kartoshka, pomidor va karam qo‘shing.","Tuz va ziravorlar seping.","Qopqog‘ini yopib, past olovda dimlang."]},
+{name:"Qaynatilgan kartoshka",emoji:"🥔",cat:"Tezkor",time:25,items:["kartoshka","tuz"],desc:"Oddiy, yengil taom.",steps:["Kartoshkani yuving va qozonga soling.","Ustidan suv quyib, yumshaguncha qaynatib oling.","Suvini to‘kib, tuz bilan torting."]},
+{name:"Sabzavotli salat",emoji:"🥗",cat:"Salat",time:15,items:["pomidor","bodring","piyoz","tuz"],desc:"Yangi sabzavotlardan salat.",steps:["Pomidor va bodringni yuving.","Sabzavotlarni to‘g‘rang.","Piyoz, tuz va xohishga ko‘ra yog‘ qo‘shing.","Aralashtirib dasturxonga torting."]},
+{name:"Olivye salati",emoji:"🥗",cat:"Salat",time:35,items:["kartoshka","sabzi","tuxum","bodring","mayonez"],desc:"Bayram dasturxoniga mos salat.",steps:["Kartoshka, sabzi va tuxumni qaynatib sovuting.","Masalliqlarni kub shaklida to‘g‘rang.","Bodring va mayonez qo‘shing.","Aralashtirib, sovuq holda torting."]},
+{name:"Piyozli omlet",emoji:"🍳",cat:"Nonushta",time:12,items:["tuxum","piyoz","yog‘","tuz"],desc:"Mazali va tez nonushta.",steps:["Piyozni mayda to‘g‘rab, yog‘da yumshating.","Tuxumni tuz bilan ko‘pirtiring.","Tuxumni tovaga quying.","Past olovda to‘liq pishiring."]},
+{name:"Quymoq",emoji:"🥞",cat:"Nonushta",time:20,items:["un","tuxum","sut","tuz"],desc:"Yumshoq uy quymog‘i.",steps:["Tuxum, sut, un va ozgina tuzni aralashtiring.","Tovani yengil yog‘lang.","Xamirni yupqa qilib quying.","Ikki tomonini tillarang bo‘lguncha pishiring."]},
+{name:"Guruch bo‘tqasi",emoji:"🍚",cat:"Nonushta",time:30,items:["guruch","sut","tuz"],desc:"Yumshoq va to‘yimli bo‘tqa.",steps:["Guruchni yuvib, suvda biroz qaynatib oling.","Sut qo‘shing.","Past olovda yumshaguncha pishiring.","Xohishga ko‘ra shakar qo‘shing."]},
+{name:"Tovuqli makaron",emoji:"🍝",cat:"Tezkor",time:30,items:["makaron","tovuq","piyoz","yog‘"],desc:"Tovuq go‘shtli makaron.",steps:["Makaronni alohida qaynatib oling.","Tovuqni mayda bo‘laklab pishiring.","Piyoz qo‘shib qovuring.","Makaron bilan aralashtiring."]},
+{name:"Moshxo‘rda",emoji:"🥣",cat:"Milliy",time:70,items:["mosh","guruch","go‘sht","piyoz","sabzi"],desc:"Mosh va guruchli milliy taom.",steps:["Moshni yuvib, suvda qaynatishni boshlang.","Go‘sht, piyoz va sabzini qovuring.","Qovurmani moshga qo‘shing.","Guruch solib, hammasi pishguncha qaynatib oling."]},
+{name:"No‘xat sho‘rva",emoji:"🍲",cat:"Milliy",time:90,items:["no‘xat","go‘sht","kartoshka","sabzi","piyoz"],desc:"No‘xatli to‘yimli sho‘rva.",steps:["No‘xatni oldindan iviting.","Go‘sht bilan suvni qaynatib oling.","No‘xat va sabzavotlarni soling.","Barchasi yumshaguncha pishiring."]},
+{name:"Tovuqli sho‘rva",emoji:"🍜",cat:"Milliy",time:50,items:["tovuq","kartoshka","sabzi","piyoz"],desc:"Yengil tovuqli sho‘rva.",steps:["Tovuqni suvda qaynatib oling.","Sabzi va piyoz qo‘shing.","Kartoshka va tuz soling.","Tovuq to‘liq pishguncha qaynatib oling."]},
+{name:"Pomidorli tuxum",emoji:"🍅",cat:"Tezkor",time:15,items:["pomidor","tuxum","yog‘","tuz"],desc:"Pomidor bilan qovurilgan tuxum.",steps:["Pomidorni to‘g‘rab, tovaga soling.","Yumshaguncha qovuring.","Tuxumlarni soling.","Tuz sepib, tuxum to‘liq pishguncha tayyorlang."]},
+{name:"Karam salati",emoji:"🥗",cat:"Salat",time:10,items:["karam","sabzi","tuz","yog‘"],desc:"Qarsildoq yangi karam salati.",steps:["Karamni ingichka to‘g‘rang.","Sabzini qirg‘ichdan chiqaring.","Tuz va ozgina yog‘ qo‘shing.","Aralashtirib torting."]},
+{name:"Blinchik",emoji:"🥞",cat:"Nonushta",time:25,items:["un","tuxum","sut","yog‘"],desc:"Yupqa va yumshoq blinchik.",steps:["Sut, tuxum va unni aralashtiring.","Tovani yengil yog‘lang.","Xamirni yupqa quying.","Ikki tomonini pishiring."]},
+{name:"Go‘shtli kotlet",emoji:"🍖",cat:"Asosiy",time:35,items:["go‘sht","piyoz","tuxum","non"],desc:"Uy sharoitida tayyorlangan kotlet.",steps:["Qiymaga piyoz, tuxum va ivitilgan non qo‘shing.","Yaxshilab aralashtirib, kotlet shaklini bering.","Tovada ikki tomonini qovuring.","Ichigacha to‘liq pishganini tekshiring."]},
+{name:"Tovuqli salat",emoji:"🥗",cat:"Salat",time:25,items:["tovuq","bodring","tuxum","mayonez"],desc:"Tovuq va sabzavotli salat.",steps:["Tovuq va tuxumni to‘liq pishirib oling.","Sovutib, mayda to‘g‘rang.","Bodring va mayonez qo‘shing.","Aralashtirib torting."]},
+{name:"Sabzavotli guruch",emoji:"🍚",cat:"Asosiy",time:30,items:["guruch","sabzi","piyoz","yog‘"],desc:"Sabzavotli yengil guruch.",steps:["Guruchni yuvib oling.","Piyoz va sabzini yengil qovuring.","Guruch va suv qo‘shing.","Past olovda pishguncha dimlang."]},
+{name:"Qovoqli bo‘tqa",emoji:"🎃",cat:"Nonushta",time:30,items:["qovoq","guruch","sut"],desc:"Qovoq bilan tayyorlangan yumshoq bo‘tqa.",steps:["Qovoqni tozalab, kub shaklida to‘g‘rang.","Ozroq suvda yumshating.","Guruch va sut qo‘shing.","Past olovda pishguncha aralashtirib turing."]},
+{name:"Tandir kabob uslubida go‘sht",emoji:"🍖",cat:"Asosiy",time:60,items:["go‘sht","piyoz","tuz"],desc:"Piyoz va ziravorlar bilan pishirilgan go‘sht.",steps:["Go‘shtni bo‘laklarga bo‘ling.","Tuz va ziravorlar bilan aralashtiring.","Piyoz bilan birga duxovkaga joylang.","Go‘sht to‘liq pishguncha pishiring."]},
+{name:"Lavash",emoji:"🌯",cat:"Tezkor",time:25,items:["lavash","tovuq","pomidor","bodring"],desc:"Uyda tayyorlanadigan lavash.",steps:["Tovuqni to‘liq pishirib, mayda kesing.","Pomidor va bodringni to‘g‘rang.","Masalliqlarni lavashga soling.","O‘rab, tovaga bosib qizdiring."]},
+{name:"Tovuq sendvichi",emoji:"🥪",cat:"Tezkor",time:15,items:["non","tovuq","bodring","pomidor"],desc:"Oddiy uy sendvichi.",steps:["Pishgan tovuqni mayda kesing.","Non orasiga tovuq va sabzavotlarni joylang.","Xohishga ko‘ra sous qo‘shing.","Darhol torting."]},
+{name:"Sabzavotli dimlama",emoji:"🥘",cat:"Asosiy",time:45,items:["kartoshka","sabzi","piyoz","pomidor","karam"],desc:"Go‘shtsiz sabzavotli dimlama.",steps:["Sabzavotlarni yuvib, to‘g‘rang.","Qozonga qatlam qilib joylang.","Tuz va ozgina suv qo‘shing.","Qopqog‘ini yopib, past olovda pishiring."]},
+{name:"Qatiqli bodring",emoji:"🥒",cat:"Salat",time:10,items:["bodring","qatiq","tuz"],desc:"Yengil salqin salat.",steps:["Bodringni mayda to‘g‘rang.","Qatiq va tuz bilan aralashtiring.","Sovuq holda torting."]},
+{name:"Sarimsoqli kartoshka",emoji:"🥔",cat:"Tezkor",time:30,items:["kartoshka","sarimsoq","yog‘","tuz"],desc:"Xushbo‘y kartoshka.",steps:["Kartoshkani bo‘laklarga to‘g‘rang.","Yog‘da qovuring yoki duxovkada pishiring.","Sarimsoq va tuz qo‘shing.","Kartoshka yumshoq va tillarang bo‘lguncha pishiring."]},
+{name:"Qiyma bilan kartoshka",emoji:"🥘",cat:"Asosiy",time:35,items:["kartoshka","go‘sht","piyoz","yog‘"],desc:"Kartoshka va qiyma bilan tayyorlanadigan taom.",steps:["Piyoz va qiymani qovuring.","Kartoshkani kub qilib to‘g‘rang.","Kartoshkani qo‘shib, ozroq suv quying.","Qopqoq yopib, yumshaguncha pishiring."]},
+{name:"Moshkichiri",emoji:"🍲",cat:"Milliy",time:60,items:["mosh","guruch","go‘sht","piyoz"],desc:"Mosh va guruchdan tayyorlanadigan milliy taom.",steps:["Moshni yuvib, qozonda qaynatishni boshlang.","Piyoz va go‘shtni qovuring.","Qovurmani moshga qo‘shing.","Guruch solib, quyuqlashguncha pishiring."]},
+{name:"Qaymoqli makaron",emoji:"🍝",cat:"Tezkor",time:20,items:["makaron","sut","sariyog‘","tuz"],desc:"Yumshoq, qaymoqli makaron.",steps:["Makaronni qaynatib oling.","Tovada sariyog‘ni eritib, sut qo‘shing.","Makaronni solib aralashtiring.","Bir necha daqiqa qizdirib torting."]},
+{name:"Tovuqli guruch",emoji:"🍗",cat:"Asosiy",time:40,items:["tovuq","guruch","sabzi","piyoz"],desc:"Tovuq va guruchli taom.",steps:["Tovuqni bo‘laklab pishiring.","Piyoz va sabzi qo‘shing.","Yuvilgan guruch va suv soling.","Guruch pishguncha past olovda dimlang."]},
+{name:"Qovurilgan jigar",emoji:"🍖",cat:"Asosiy",time:20,items:["jigar","piyoz","yog‘","tuz"],desc:"Piyozli jigar qovurmasi.",steps:["Jigarni tozalab, mayda bo‘laklang.","Piyozni yog‘da qovuring.","Jigarni qo‘shib, to‘liq pishiring.","Tuzni oxirida qo‘shing."]},
+{name:"Piyozli kartoshka pyuresi",emoji:"🥔",cat:"Asosiy",time:30,items:["kartoshka","sut","sariyog‘","piyoz"],desc:"Yumshoq kartoshka pyuresi.",steps:["Kartoshkani yumshaguncha qaynatib oling.","Suvini to‘kib, ezib chiqing.","Sut va sariyog‘ qo‘shing.","Xohishga ko‘ra qovurilgan piyoz bilan torting."]},
+{name:"Tovuqli sendvich",emoji:"🥪",cat:"Nonushta",time:15,items:["non","tovuq","pishloq"],desc:"Pishloqli tovuq sendvichi.",steps:["Pishgan tovuqni non ustiga joylang.","Pishloq qo‘shing.","Ikkinchi non bo‘lagini yoping.","Tovada pishloq eriguncha qizdiring."]},
+{name:"Oddiy guruch",emoji:"🍚",cat:"Garnir",time:25,items:["guruch","tuz","yog‘"],desc:"Ko‘plab taomlar yoniga mos guruch.",steps:["Guruchni bir necha marta yuving.","Qaynayotgan suv va tuzga soling.","Yumshaguncha pishirib, suvini to‘king.","Xohishga ko‘ra ozgina yog‘ qo‘shing."]},
+{name:"Qaynatilgan tuxum",emoji:"🥚",cat:"Nonushta",time:10,items:["tuxum","suv"],desc:"Oddiy va foydali nonushta.",steps:["Tuxumlarni qozonga joylang.","Ustidan suv quying.","Qaynagach, kerakli pishish darajasigacha qaynatib oling.","Sovuq suvda sovuting."]},
+{name:"Tovuqli kartoshka",emoji:"🍗",cat:"Asosiy",time:45,items:["tovuq","kartoshka","piyoz","yog‘"],desc:"Tovuq va kartoshka birga pishiriladi.",steps:["Tovuq va kartoshkani bo‘laklang.","Piyoz va ziravorlar bilan aralashtiring.","Duxovka idishiga joylang.","Tovuq to‘liq pishguncha duxovkada pishiring."]},
+{name:"Sabzili salat",emoji:"🥕",cat:"Salat",time:10,items:["sabzi","sarimsoq","mayonez"],desc:"Sabzili tezkor salat.",steps:["Sabzini qirg‘ichdan chiqaring.","Sarimsoqni maydalang.","Mayonez bilan aralashtiring.","Darhol torting."]},
+{name:"Pishloqli omlet",emoji:"🧀",cat:"Nonushta",time:12,items:["tuxum","pishloq","sut","tuz"],desc:"Pishloqli yumshoq omlet.",steps:["Tuxum va sutni aralashtiring.","Tovaga quying.","Ustiga pishloq seping.","Past olovda to‘liq pishiring."]},
+{name:"Qovoq qovurmasi",emoji:"🎃",cat:"Asosiy",time:25,items:["qovoq","piyoz","yog‘","tuz"],desc:"Qovoqdan tayyorlangan oddiy taom.",steps:["Qovoqni tozalab, bo‘laklang.","Piyozni yog‘da qovuring.","Qovoqni solib, yumshaguncha pishiring.","Tuz va ziravor qo‘shing."]},
+{name:"Karamli dimlama",emoji:"🥬",cat:"Asosiy",time:40,items:["karam","sabzi","piyoz","pomidor"],desc:"Yengil karamli taom.",steps:["Piyoz va sabzini qovuring.","Karam va pomidor qo‘shing.","Ozroq suv va tuz soling.","Qopqoq yopib, yumshaguncha dimlang."]},
+{name:"Sutli vermishel",emoji:"🥣",cat:"Nonushta",time:15,items:["vermishel","sut","tuz"],desc:"Tez tayyor bo‘ladigan sutli taom.",steps:["Sutni qozonda qizdiring.","Vermishelni soling.","Past olovda yumshaguncha pishiring.","Xohishga ko‘ra ozgina shakar qo‘shing."]},
+{name:"Nonli tuxum",emoji:"🍞",cat:"Nonushta",time:10,items:["non","tuxum","yog‘","tuz"],desc:"Non bilan tayyorlanadigan tezkor nonushta.",steps:["Nonni bo‘laklarga kesing.","Tuxumni tuz bilan aralashtiring.","Nonni tuxumga botiring.","Tovada ikki tomonini qovuring."]},
+{name:"Baliq qovurmasi",emoji:"🐟",cat:"Asosiy",time:30,items:["baliq","un","yog‘","tuz"],desc:"Qarsildoq baliq qovurmasi.",steps:["Baliqni tozalab, bo‘laklang.","Tuz sepib, ozgina unga belab oling.","Tovada yog‘ni qizdiring.","Baliqni to‘liq pishguncha ikki tomonlama qovuring."]},
+{name:"Qatiqli makaron",emoji:"🍝",cat:"Tezkor",time:20,items:["makaron","qatiq","tuz"],desc:"Oddiy makaron va qatiq.",steps:["Makaronni qaynatib oling.","Suvini to‘kib, biroz sovuting.","Qatiq va tuz bilan aralashtiring.","Darhol torting."]},
+{name:"Mevali salat",emoji:"🍎",cat:"Shirinlik",time:10,items:["olma","banan","uzum"],desc:"Yangi mevalardan salat.",steps:["Mevalarni yuving.","Olma va bananni to‘g‘rang.","Uzum bilan aralashtiring.","Yangi holda torting."]},
+{name:"Bananli sut",emoji:"🥛",cat:"Ichimlik",time:5,items:["banan","sut"],desc:"Uyda tayyorlanadigan bananli ichimlik.",steps:["Bananni tozalang.","Sut bilan blenderga soling.","Bir xil massa bo‘lguncha aralashtiring.","Darhol iching."]},
+{name:"Limonli ichimlik",emoji:"🍋",cat:"Ichimlik",time:5,items:["limon","suv","shakar"],desc:"Salqin limonli ichimlik.",steps:["Limon sharbatini siqib oling.","Suvga qo‘shing.","Xohishga ko‘ra shakar soling.","Aralashtirib, sovuq holda torting."]}
+];
+let category="Barchasi";
+const categories=["Barchasi",...new Set(dishes.map(d=>d.cat))];
+const norm=s=>s.toLowerCase().replaceAll("ʻ","'").replaceAll("’","'").trim();
+function renderCategories(){
+document.getElementById("categories").innerHTML=categories.map(c=>`<button class="${c===category?'active':''}" onclick="setCategory('${c}')">${c}</button>`).join("");
+}
+function setCategory(c){category=c;renderCategories();render();}
+function render(){
+const q=norm(document.getElementById("search").value);
+const results=dishes.filter(d=>(category==="Barchasi"||d.cat===category)&&(!q||norm(d.name+" "+d.items.join(" ")+" "+d.desc).includes(q)));
+document.getElementById("message").textContent=results.length?`${results.length} ta taom topildi 😋`:"Hech narsa topilmadi. Boshqa so‘z bilan qidirib ko‘ring.";
+document.getElementById("grid").innerHTML=results.map(d=>`<article class="card"><div class="emoji">${d.emoji}</div><h3>${d.name}</h3><div class="meta">⏱ ${d.time} daqiqa · ${d.cat}</div><p>${d.desc}</p><button onclick="showRecipe('${d.name}')">Retseptni ko‘rish</button></article>`).join("");
+}
+function showRecipe(name){
+const d=dishes.find(x=>x.name===name);if(!d)return;
+const box=document.getElementById("recipe");
+box.style.display="block";
+box.innerHTML=`<button class="secondary" onclick="document.getElementById('recipe').style.display='none'">✖ Yopish</button><h2>${d.emoji} ${d.name}</h2><p>${d.desc}</p><p><b>⏱ Tayyorlash vaqti:</b> ${d.time} daqiqa</p><p><b>🥕 Kerakli mahsulotlar:</b> ${d.items.join(", ")}</p><h3>Tayyorlash usuli</h3><ol>${d.steps.map(s=>`<li>${s}</li>`).join("")}</ol><p><i>Eslatma: mahsulot miqdorini odamlar soniga qarab belgilang. Go‘sht va tuxum kabi mahsulotlarni to‘liq pishiring.</i></p>`;
+box.scrollIntoView({behavior:"smooth",block:"start"});
+}
+function findByIngredients(){
+const words=norm(document.getElementById("ingredients").value).split(/[,،;]+/).map(x=>x.trim()).filter(Boolean);
+if(!words.length){document.getElementById("message").textContent="Avval mahsulotlarni yozing. Masalan: tuxum, kartoshka, piyoz.";return}
+const results=dishes.map(d=>({...d,matched:d.items.filter(i=>words.some(w=>norm(i).includes(w)||w.includes(norm(i))))})).filter(d=>d.matched.length).sort((a,b)=>b.matched.length-a.matched.length);
+document.getElementById("message").textContent=results.length?`Mahsulotlaringizga mos ${results.length} ta taom topildi!`:"Mos taom topilmadi. Boshqa mahsulotlarni kiriting.";
+document.getElementById("grid").innerHTML=results.map(d=>`<article class="card"><div class="emoji">${d.emoji}</div><h3>${d.name}</h3><div class="meta">⏱ ${d.time} daqiqa · Mos mahsulot: ${d.matched.join(", ")}</div><p>${d.desc}</p><button onclick="showRecipe('${d.name}')">Retseptni ko‘rish</button></article>`).join("");
+}
+function randomDish(){const d=dishes[Math.floor(Math.random()*dishes.length)];showRecipe(d.name)}
+document.getElementById("search").addEventListener("keydown",e=>{if(e.key==="Enter")render()});
+document.getElementById("ingredients").addEventListener("keydown",e=>{if(e.key==="Enter")findByIngredients()});
+renderCategories();render();
+</script>
+</body>
+</html>
